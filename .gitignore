@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Packaged binaries
+*.exe
+*.msi
+*.app
+*.dmg
+*.deb
+*.AppImage
+
+# Local vault database (contains user secrets)
+*.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude Code local settings and project guide
+.claude/settings.local.json
+CLAUDE.md
+claude.txt

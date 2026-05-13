@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "PasSafety default capabilities",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "shell:allow-execute",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-read-text",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}
