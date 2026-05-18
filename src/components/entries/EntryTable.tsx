@@ -12,6 +12,7 @@ interface EntryTableProps {
   onSelect: (entry: VaultEntry | null) => void;
   onEdit: (entry: VaultEntry) => void;
   onCopy: (value: string) => void;
+  onCopyPassword: (value: string) => void;
   selectedGroupLabel: string;
   revealed: Set<number>;
   onToggleReveal: (id: number) => void;
@@ -77,7 +78,7 @@ function ContextMenu({
 }
 
 export default function EntryTable({
-  entries, selectedId, onSelect, onEdit, onCopy, selectedGroupLabel,
+  entries, selectedId, onSelect, onEdit, onCopy, onCopyPassword, selectedGroupLabel,
   revealed, onToggleReveal,
 }: EntryTableProps) {
   const { deleteEntry, loadEntries, loadGroups, reorderEntries, moveEntriesToGroup, exportSelectedCsv, groups } = useVaultStore();
@@ -425,7 +426,7 @@ export default function EntryTable({
           entry={ctxMenu.entry}
           onClose={() => setCtxMenu(null)}
           onCopyUsername={onCopy}
-          onCopyPassword={onCopy}
+          onCopyPassword={onCopyPassword}
           onEdit={onEdit}
           onDelete={(e) => setConfirmDel({ kind: 'single', entry: e })}
         />
@@ -444,7 +445,7 @@ export default function EntryTable({
           </button>
           <button
             className="ctxMenu__item"
-            onClick={() => { onCopy(copyMenu.entry.password); setCopyMenu(null); }}
+            onClick={() => { onCopyPassword(copyMenu.entry.password); setCopyMenu(null); }}
           >
             <Copy size={13} /><span>复制密码</span>
           </button>

@@ -14,6 +14,14 @@ export interface Group {
 
 export type ThemeMode = 'dark' | 'light';
 
+/** Tracks the auto-clearing clipboard countdown after a password is copied. */
+export interface ClipboardGuard {
+  /** Epoch ms at which the clipboard auto-clear fires. */
+  clearAt: number;
+  /** 'counting' while the timer runs, 'cleared' for the brief post-clear notice. */
+  phase: 'counting' | 'cleared';
+}
+
 export interface VaultState {
   isLocked: boolean;
   isInitialized: boolean;
@@ -25,6 +33,7 @@ export interface VaultState {
   loading: boolean;
   error: string | null;
   theme: ThemeMode;
+  clipboardGuard: ClipboardGuard | null;
 }
 
 export interface JsonRpcRequest {

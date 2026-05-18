@@ -8,7 +8,7 @@ interface PasswordGeneratorProps {
 }
 
 export default function PasswordGenerator({ onSelect, onClose }: PasswordGeneratorProps) {
-  const { generatePassword } = useVaultStore();
+  const { generatePassword, copyPassword } = useVaultStore();
   const [options, setOptions] = useState<PasswordOptions>({
     length: 16,
     uppercase: true,
@@ -27,7 +27,9 @@ export default function PasswordGenerator({ onSelect, onClose }: PasswordGenerat
 
   const handleCopy = async () => {
     if (!password) return;
-    await navigator.clipboard.writeText(password);
+    // Route through the store so the copy uses the Tauri clipboard plugin and
+    // arms the 60s auto-clear guard, consistent with every other password copy.
+    await copyPassword(password);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
