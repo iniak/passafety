@@ -28,6 +28,13 @@ impl Default for PasswordOptions {
     }
 }
 
+/// Clamp bounds for the requested length. The UI slider is 8..=64, but the
+/// command is reachable directly via `invoke()`, so the generator must defend
+/// itself: a non-positive length must never yield an empty password, and an
+/// absurd length must not be turned into a multi-GB allocation.
+pub const MIN_LENGTH: i32 = 8;
+pub const MAX_LENGTH: i32 = 4096;
+
 /// Character sets for password generation
 const UPPERCASE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWERCASE: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
@@ -60,7 +67,9 @@ pub fn generate_password(options: &PasswordOptions) -> String {
 
     let mut rng = thread_rng();
 
-    (0..options.length)
+    let length = options.length.clamp(MIN_LENGTH, MAX_LENGTH);
+
+    (0..length)
         .map(|_| {
             let idx = characters.choose(&mut rng).unwrap();
             *idx as char
@@ -115,5 +124,33 @@ mod tests {
         };
         let password = generate_password(&options);
         assert!(password.chars().all(|c| c.is_ascii_digit()));
+    }
+
+    #[test]
+    fn test_non_positive_length_falls_back_to_minimum() {
+        // A password manager must never hand back an empty string just because
+        // the requested length was zero or negative.
+        for bad_len in [-100, -1, 0] {
+            let options = PasswordOptions {
+                length: bad_len,
+                ..PasswordOptions::default()
+            };
+            let password = generate_password(&options);
+            assert_eq!(
+                password.chars().count(),
+                MIN_LENGTH as usize,
+                "length {bad_len} should clamp to MIN_LENGTH"
+            );
+        }
+    }
+
+    #[test]
+    fn test_excessive_length_is_capped() {
+        let options = PasswordOptions {
+            length: i32::MAX,
+            ..PasswordOptions::default()
+        };
+        let password = generate_password(&options);
+        assert_eq!(password.chars().count(), MAX_LENGTH as usize);
     }
 }

@@ -2,7 +2,7 @@
 
 Passafety 是一个基于 **Tauri 2 + React 18 + Rust** 构建的离线密码管理器。所有数据以 AES-256-GCM 加密后存储于本地 SQLite 数据库，主密钥仅在解锁期间驻留内存，并在锁定时被显式擦除。整体风格参考 KeePassXC,但加入了 amber + ink 的暗色 vault-grade 视觉系统，并提供完整浅色模式。
 
-> **版本**：v3.4.0  ·  **平台**：Windows（绿色版 + NSIS 安装包）  ·  **许可**：[MIT](./LICENSE)  ·  **运行模式**：portable · `vault.db` 与 exe 同目录
+> **版本**：v3.4.1  ·  **平台**：Windows（绿色版 + NSIS 安装包）  ·  **许可**：[MIT](./LICENSE)  ·  **运行模式**：portable · `vault.db` 与 exe 同目录
 
 ---
 
@@ -130,7 +130,7 @@ PasSafety/
 │   └── types/index.ts
 │
 ├── src-tauri/                            # Rust + Tauri 桌面层
-│   ├── Cargo.toml                        # 版本号 3.4.0
+│   ├── Cargo.toml                        # 版本号 3.4.1
 │   ├── tauri.conf.json                   # dragDropEnabled: false（启用 HTML5 DnD）
 │   ├── capabilities/default.json
 │   ├── icons/                            # 全套图标（PNG + ICO + Square*）
@@ -146,7 +146,7 @@ PasSafety/
 │
 ├── build/                                # 一键构建产物副本（gitignore）
 │   ├── passafety.exe                     # 绿色版（运行后同目录会生成 vault.db）
-│   └── Passafety_3.4.0_x64-setup.exe     # NSIS 安装包
+│   └── Passafety_3.4.1_x64-setup.exe     # NSIS 安装包
 ├── app-icon.png                          # 图标源 (1024×1024)
 ├── test-passwords.csv                    # 100 条测试数据（可导入演练）
 ├── public/ · dist/                       # 静态资源 / 前端构建产物
@@ -204,7 +204,7 @@ npm run tauri build     # 生成 NSIS 安装包 + 绿色版 exe
 | 文件 | 路径 | 大小 |
 | --- | --- | --- |
 | 可执行文件 | `src-tauri/target/release/passafety.exe` | ~6 MB |
-| 安装包 | `src-tauri/target/release/bundle/nsis/Passafety_3.4.0_x64-setup.exe` | ~2.3 MB |
+| 安装包 | `src-tauri/target/release/bundle/nsis/Passafety_3.4.1_x64-setup.exe` | ~2.3 MB |
 
 Release profile 已启用 `lto = true`、`codegen-units = 1`、`panic = "abort"`、`opt-level = "s"`、`strip = true`，体积与启动速度均经过权衡。
 
@@ -412,6 +412,7 @@ cargo test
 
 ## 历史
 
+- **v3.4.1** — 复制密码后 60 秒自动从剪贴板清除（带右下角倒计时提示，仅当剪贴板内容未被改动时才清除）；安全审计修复：裁剪未使用的 Tauri 能力、密码生成器改用 Tauri 剪贴板插件、`/` 聚焦搜索快捷键、`delete_group` 默认分组保护、密码生成长度钳制
 - **v3.4.0** — 浅色 / 深色双主题，拖拽排序，拖到分组，批量改组，键盘快捷键，应用菜单，修改主密码，portable 模式，列宽可调，新图标
 - **v3.0.0** — 完全移除 Python 后端，加密与持久化全部迁移到 Rust；新 vault-grade 视觉系统
 - ≤ v2.x — Python + JSON-RPC over stdin/stdout 架构（已废弃）

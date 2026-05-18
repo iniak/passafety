@@ -9,6 +9,7 @@ import EntryForm from '../entries/EntryForm';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import AboutModal from '../ui/AboutModal';
 import ChangePasswordModal from '../ui/ChangePasswordModal';
+import ClipboardToast from '../ui/ClipboardToast';
 import { VaultEntry } from '../../types';
 
 function VaultIcon({ size = 22 }: { size?: number }) {
@@ -25,7 +26,7 @@ export default function MainLayout() {
   const {
     lock, entries, searchQuery, setSearchQuery, selectedGroup, setSelectedGroup,
     addGroup, exportCsv, importCsv, loading, groups,
-    theme, toggleTheme,
+    theme, toggleTheme, copyPassword,
   } = useVaultStore();
 
   const [showForm, setShowForm] = useState(false);
@@ -39,6 +40,7 @@ export default function MainLayout() {
   const [showAbout, setShowAbout] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Close app menu on outside click
   useEffect(() => {
@@ -74,10 +76,17 @@ export default function MainLayout() {
     ? entries.find((e) => e.id === selectedEntry.id) ?? null
     : null;
 
+  // Username / non-secret copy: plain, no auto-clear guard.
   const handleCopy = useCallback(async (value: string) => {
     if (!value) return;
     await writeText(value);
   }, []);
+
+  // Password copy: routed through the store so it arms the 60s auto-clear.
+  const handleCopyPassword = useCallback((value: string) => {
+    if (!value) return;
+    void copyPassword(value);
+  }, [copyPassword]);
 
   const handleExport = async () => {
     const path = await save({
@@ -120,7 +129,12 @@ export default function MainLayout() {
       // Don't fire when any modal is open
       if (document.querySelector('.modalBackdrop')) return;
 
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if (e.key === '/') {
+        // The search box advertises "/" as its focus shortcut; honor it.
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         const all = ['全部', ...groups.map((g) => g.name)];
         const idx = all.indexOf(selectedGroup);
@@ -135,12 +149,12 @@ export default function MainLayout() {
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
         if (!currentSelected) return;
         e.preventDefault();
-        handleCopy(currentSelected.password);
+        handleCopyPassword(currentSelected.password);
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [groups, selectedGroup, setSelectedGroup, currentSelected, toggleReveal, handleCopy]);
+  }, [groups, selectedGroup, setSelectedGroup, currentSelected, toggleReveal, handleCopyPassword]);
 
   const handleLockClick = () => setConfirmLock(true);
   const handleLockConfirm = () => {
@@ -209,6 +223,7 @@ export default function MainLayout() {
           <div className="search">
             <Search size={14} />
             <input
+              ref={searchInputRef}
               className="search__input"
               placeholder="搜索：标题、用户名、分组、备注…"
               value={searchQuery}
@@ -260,6 +275,7 @@ export default function MainLayout() {
           onSelect={setSelectedEntry}
           onEdit={handleEdit}
           onCopy={handleCopy}
+          onCopyPassword={handleCopyPassword}
           selectedGroupLabel={groupLabel}
           revealed={revealed}
           onToggleReveal={toggleReveal}
@@ -282,7 +298,7 @@ export default function MainLayout() {
         <div className="statusbar__r">
           <span>{filtered.length} OF {entries.length}</span>
           <span className="sep">·</span>
-          <span>v3.4.0</span>
+          <span>v3.4.1</span>
         </div>
       </div>
 
@@ -336,6 +352,9 @@ export default function MainLayout() {
           </form>
         </div>
       )}
+
+      {/* Clipboard auto-clear countdown */}
+      <ClipboardToast />
 
       {/* About modal */}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}

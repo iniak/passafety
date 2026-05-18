@@ -38,7 +38,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
               PASSAFETY
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-3)', marginTop: 4, letterSpacing: '0.12em' }}>
-              v 3.4.0 · LOCAL VAULT
+              v 3.4.1 · LOCAL VAULT
             </div>
           </div>
 

@@ -1,8 +1,26 @@
 import { create } from 'zustand';
 import { VaultEntry, Group, VaultState, ThemeMode } from '../types';
 import { invoke } from '@tauri-apps/api/core';
+import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
 
 const THEME_KEY = 'passafety:theme';
+
+/** How long a copied password is allowed to sit in the clipboard. */
+const CLIPBOARD_TTL_MS = 60_000;
+/** How long the "已清除" confirmation stays on screen before fading out. */
+const CLEARED_NOTICE_MS = 2500;
+
+// Module-scoped (deliberately NOT React state): the plaintext secret only
+// needs to exist long enough to compare against the clipboard at expiry, and
+// keeping it out of the store avoids it leaking through devtools/state dumps.
+let pendingSecret: string | null = null;
+let clearTimer: ReturnType<typeof setTimeout> | null = null;
+let clearedTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelClipboardTimers() {
+  if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+  if (clearedTimer) { clearTimeout(clearedTimer); clearedTimer = null; }
+}
 
 function readStoredTheme(): ThemeMode {
   try {
@@ -37,6 +55,9 @@ interface VaultActions {
   deleteGroup: (name: string) => Promise<void>;
   setSelectedGroup: (group: string) => void;
   setSearchQuery: (query: string) => void;
+  copyPassword: (value: string) => Promise<void>;
+  /** Internal: runs the conditional clipboard clear (timer / lock driven). */
+  _runClipboardClear: () => Promise<void>;
   exportCsv: (path: string) => Promise<void>;
   exportSelectedCsv: (path: string, ids: number[]) => Promise<void>;
   importCsv: (path: string) => Promise<void>;
@@ -68,6 +89,7 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   loading: false,
   error: null,
   theme: readStoredTheme(),
+  clipboardGuard: null,
 
   unlock: async (password: string) => {
     set({ loading: true, error: null });
@@ -105,8 +127,65 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   },
 
   lock: () => {
+    // Locking must not leave a copied password sitting in the clipboard.
+    cancelClipboardTimers();
+    void get()._runClipboardClear();
     invoke('lock_vault').catch(console.error);
     set({ isLocked: true, entries: [], selectedGroup: '全部' });
+  },
+
+  copyPassword: async (value: string) => {
+    if (!value) return;
+    try {
+      await writeText(value);
+    } catch (e) {
+      console.error('Failed to copy password to clipboard:', e);
+      return;
+    }
+    pendingSecret = value;
+    cancelClipboardTimers();
+    set({ clipboardGuard: { clearAt: Date.now() + CLIPBOARD_TTL_MS, phase: 'counting' } });
+    clearTimer = setTimeout(() => { void get()._runClipboardClear(); }, CLIPBOARD_TTL_MS);
+  },
+
+  _runClipboardClear: async () => {
+    if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+    const secret = pendingSecret;
+    pendingSecret = null;
+    if (secret === null) {
+      // Nothing pending (e.g. lock with no prior copy) — just hide any toast.
+      set({ clipboardGuard: null });
+      return;
+    }
+
+    // Only wipe if the clipboard still holds *our* secret, so we never destroy
+    // something the user copied in the meantime. If the read fails we cannot
+    // compare, so we clear anyway — fail safe toward not leaking the password.
+    let shouldClear = true;
+    try {
+      shouldClear = (await readText()) === secret;
+    } catch (e) {
+      console.error('Clipboard read failed; clearing anyway:', e);
+    }
+
+    let cleared = false;
+    if (shouldClear) {
+      try {
+        await writeText('');
+        cleared = true;
+      } catch (e) {
+        console.error('Clipboard clear failed:', e);
+      }
+    }
+
+    if (cleared) {
+      set({ clipboardGuard: { clearAt: Date.now(), phase: 'cleared' } });
+      clearedTimer = setTimeout(() => set({ clipboardGuard: null }), CLEARED_NOTICE_MS);
+    } else {
+      // Clipboard was changed by the user (or clear failed) — drop the toast
+      // silently rather than claim a clear that didn't happen.
+      set({ clipboardGuard: null });
+    }
   },
 
   getHint: async () => {

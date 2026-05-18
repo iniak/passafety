@@ -1,7 +1,7 @@
 {
   "name": "passafety",
   "private": true,
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "Local-first password manager built with Tauri 2 + React 18 + Rust",
   "author": "iniak <iniak@users.noreply.github.com>",
   "license": "MIT",

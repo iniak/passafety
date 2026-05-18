@@ -322,7 +322,7 @@ export default function UnlockScreen() {
             <div className="setup__footL">
               <span>PASSAFETY</span>
               <span className="sep">/</span>
-              <span>v3.4.0</span>
+              <span>v3.4.1</span>
               <span className="sep">/</span>
               <span>WIN-X64</span>
             </div>

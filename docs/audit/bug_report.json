@@ -1,0 +1,161 @@
+{
+  "repository": "passafety",
+  "version": "3.4.0",
+  "auditDate": "2026-05-18",
+  "branch": "bugfix/repo-audit-2026-05",
+  "baseCommit": "983e05a",
+  "baseline": {
+    "cargoTest": "7 passed",
+    "tsc": "clean",
+    "cargoClippy": "2 cosmetic warnings",
+    "buildFailures": 0
+  },
+  "postFix": {
+    "cargoTest": "9 passed",
+    "tsc": "clean",
+    "cargoClippy": "no new warnings"
+  },
+  "findings": [
+    {
+      "id": "BUG-001",
+      "status": "fixed",
+      "severity": "medium",
+      "category": "security",
+      "component": "tauri-capabilities",
+      "files": ["src-tauri/capabilities/default.json"],
+      "summary": "Unused shell:allow-execute capability grants an arbitrary-command-execution primitive with no consumer.",
+      "rootCause": "Capability declared but no plugin-shell import / Command / execute() call exists in src/.",
+      "fix": "Removed shell:allow-execute from the capability list.",
+      "verification": "Tree-wide grep shows no shell execute usage; frontend type-checks."
+    },
+    {
+      "id": "BUG-002",
+      "status": "fixed",
+      "severity": "low",
+      "category": "security",
+      "component": "tauri-capabilities",
+      "files": ["src-tauri/capabilities/default.json"],
+      "summary": "Unused clipboard-manager:allow-read-text capability is a needless exfiltration surface.",
+      "rootCause": "App only writes the clipboard; no readText call anywhere.",
+      "fix": "Removed clipboard-manager:allow-read-text."
+    },
+    {
+      "id": "BUG-003",
+      "status": "fixed",
+      "severity": "medium",
+      "category": "functional",
+      "component": "frontend",
+      "files": ["src/components/entries/PasswordGenerator.tsx"],
+      "summary": "Password generator copied via navigator.clipboard, unreliable in the WebView2 origin, failing silently with no UI feedback.",
+      "rootCause": "navigator.clipboard.writeText rejects in the Tauri custom-protocol origin; rejection occurred before setCopied(true).",
+      "fix": "Switched to @tauri-apps/plugin-clipboard-manager writeText (consistent with rest of app), wrapped in try/catch.",
+      "verification": "tsc clean."
+    },
+    {
+      "id": "BUG-004",
+      "status": "fixed",
+      "severity": "low",
+      "category": "functional-ux",
+      "component": "frontend",
+      "files": ["src/components/layout/MainLayout.tsx"],
+      "summary": "The '/' search-focus shortcut chip shown in the UI had no keyboard handler.",
+      "rootCause": "Global keydown handler implemented only Arrow keys, Space, Ctrl/Cmd+C.",
+      "fix": "Added searchInputRef and a '/' branch that focuses and selects the search input, respecting input/modal guards."
+    },
+    {
+      "id": "BUG-005",
+      "status": "fixed",
+      "severity": "low",
+      "category": "data-integrity",
+      "component": "rust-db",
+      "files": ["src-tauri/src/vault/db.rs"],
+      "summary": "delete_group could delete the default group, orphaning entries' group references until next launch.",
+      "rootCause": "No guard for the structural-invariant default group; the Tauri command is directly invokable even though the UI hides it.",
+      "fix": "Early-return no-op when name == default group, enforced at the data layer."
+    },
+    {
+      "id": "BUG-006",
+      "status": "fixed",
+      "severity": "low",
+      "category": "edge-case",
+      "component": "rust-password-gen",
+      "files": ["src-tauri/src/vault/password_gen.rs"],
+      "summary": "generate_password returned an empty password for non-positive length and risked huge allocation for absurd length.",
+      "rootCause": "i32 length used unchecked; reachable via direct invoke (UI slider clamps, command does not).",
+      "fix": "Clamp to [MIN_LENGTH=8, MAX_LENGTH=4096]; added 2 unit tests.",
+      "tests": ["test_non_positive_length_falls_back_to_minimum", "test_excessive_length_is_capped"]
+    },
+    {
+      "id": "BUG-007",
+      "status": "fixed",
+      "severity": "medium",
+      "category": "documentation",
+      "component": "docs",
+      "files": ["CLAUDE.md"],
+      "summary": "CLAUDE.md falsely claimed the password generator is broken and told maintainers not to fix it; stale DB-path section and command list; wrong version.",
+      "rootCause": "Documentation not updated as code evolved.",
+      "fix": "Corrected the false mismatch note, DB path resolution, registered-command list, and version."
+    },
+    {
+      "id": "FIND-008",
+      "status": "fixed",
+      "fixedInVersion": "3.4.1",
+      "severity": "medium",
+      "category": "security",
+      "component": "frontend",
+      "files": ["src/stores/vaultStore.ts", "src/components/ui/ClipboardToast.tsx", "src/components/layout/MainLayout.tsx", "src/components/entries/EntryTable.tsx", "src/components/entries/PasswordGenerator.tsx", "src/types/index.ts"],
+      "summary": "Copied passwords are never auto-cleared from the OS clipboard.",
+      "fix": "Password copies arm a 60s timer; on expiry the clipboard is wiped only if it still equals the copied secret (fail-safe clear on read error); lock clears immediately; bottom-right countdown toast. Re-added clipboard-manager:allow-read-text (intentional partial reversal of BUG-002) for the conditional check; shell:allow-execute stays removed."
+    },
+    {
+      "id": "FIND-009",
+      "status": "documented",
+      "severity": "low",
+      "category": "accessibility",
+      "component": "frontend",
+      "files": ["src/components/layout/MainLayout.tsx"],
+      "summary": "Global Space preventDefault breaks Space-activating focused buttons.",
+      "reasonNotChanged": "Reveal-on-Space is intentional; narrowing it is a design decision."
+    },
+    {
+      "id": "FIND-010",
+      "status": "documented",
+      "severity": "low",
+      "category": "robustness",
+      "component": "rust-db",
+      "files": ["src-tauri/src/vault/db.rs"],
+      "summary": "Master row read via hard-coded WHERE id = 1 while insert does not pin id.",
+      "reasonNotChanged": "No reproduction; crypto-adjacent unlock path that CLAUDE.md forbids changing without a written migration."
+    },
+    {
+      "id": "FIND-011",
+      "status": "documented",
+      "severity": "low",
+      "category": "performance",
+      "component": "frontend",
+      "files": ["src/components/entries/EntryTable.tsx", "src/stores/vaultStore.ts"],
+      "summary": "Batch delete performs N sequential round-trips, each reloading entries and groups.",
+      "reasonNotChanged": "Correct but inefficient; proper fix is a new transactional backend command (feature addition beyond safe audit scope)."
+    },
+    {
+      "id": "FIND-012",
+      "status": "documented",
+      "severity": "low",
+      "category": "robustness",
+      "component": "rust-db",
+      "files": ["src-tauri/src/vault/db.rs"],
+      "summary": "CSV import assumes a header row; a headerless third-party CSV silently drops its first data row.",
+      "reasonNotChanged": "has_headers(true) matches the app's own export format by design; changing it is a contract/UX decision."
+    },
+    {
+      "id": "FIND-013",
+      "status": "documented",
+      "severity": "info",
+      "category": "code-quality",
+      "component": "mixed",
+      "files": ["src/components/unlock/UnlockScreen.tsx", "src/components/ui/ChangePasswordModal.tsx", "src-tauri/src/vault/db.rs"],
+      "summary": "computeStrength duplicated verbatim across two components; pre-existing clippy warnings (unnecessary_unwrap, too_many_arguments).",
+      "reasonNotChanged": "Non-behavioral cleanup; recommended but out of bug-fix scope."
+    }
+  ]
+}

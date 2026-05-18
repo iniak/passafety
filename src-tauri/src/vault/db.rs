@@ -536,6 +536,14 @@ impl Database {
 
     /// Delete a group (entries moved to default group)
     pub fn delete_group(&self, name: &str) -> Result<(), DatabaseError> {
+        // The default group is a structural invariant: entries fall back to it
+        // and `init_tables` always recreates it. Deleting it would orphan every
+        // entry's group reference until the next launch. Refuse, regardless of
+        // caller (the UI hides this action, but the command is invokable too).
+        if name == "默认分组" {
+            return Ok(());
+        }
+
         // Move entries to default group
         self.conn.execute(
             "UPDATE entries SET `group` = '默认分组' WHERE `group` = ?1",
